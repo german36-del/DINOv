@@ -12,9 +12,10 @@ from detectron2.data import transforms as T
 from detectron2.projects.point_rend import ColorAugSSDTransform
 from detectron2.structures import BitMasks, Instances
 
-from dinov.utils import configurable
+from DINOv.dinov.utils import configurable
 
 __all__ = ["MaskFormerSemanticDatasetMapper"]
+
 
 class MaskFormerSemanticDatasetMapper:
     """
@@ -56,36 +57,38 @@ class MaskFormerSemanticDatasetMapper:
 
         logger = logging.getLogger(__name__)
         mode = "training" if is_train else "inference"
-        logger.info(f"[{self.__class__.__name__}] Augmentations used in {mode}: {augmentations}")
+        logger.info(
+            f"[{self.__class__.__name__}] Augmentations used in {mode}: {augmentations}"
+        )
 
     @classmethod
-    def from_config(cls, cfg, is_train=True, dataset_name='no'):
-        cfg_input = cfg['INPUT']
+    def from_config(cls, cfg, is_train=True, dataset_name="no"):
+        cfg_input = cfg["INPUT"]
         # Build augmentation
         augs = [
             T.ResizeShortestEdge(
-                cfg_input['MIN_SIZE_TRAIN'],
-                cfg_input['MAX_SIZE_TRAIN'],
-                cfg_input['MIN_SIZE_TRAIN_SAMPLING'],
+                cfg_input["MIN_SIZE_TRAIN"],
+                cfg_input["MAX_SIZE_TRAIN"],
+                cfg_input["MIN_SIZE_TRAIN_SAMPLING"],
             )
         ]
-        cfg_input_crop = cfg_input['CROP']
-        if cfg_input_crop['ENABLED']:
+        cfg_input_crop = cfg_input["CROP"]
+        if cfg_input_crop["ENABLED"]:
             augs.append(
                 T.RandomCrop_CategoryAreaConstraint(
-                    cfg_input_crop['TYPE'],
-                    cfg_input_crop['SIZE'],
-                    cfg_input_crop['SINGLE_CATEGORY_MAX_AREA'],
-                    cfg_input['IGNORE_VALUE'],
+                    cfg_input_crop["TYPE"],
+                    cfg_input_crop["SIZE"],
+                    cfg_input_crop["SINGLE_CATEGORY_MAX_AREA"],
+                    cfg_input["IGNORE_VALUE"],
                 )
             )
-        if cfg_input['COLOR_AUG_SSD']:
-            augs.append(ColorAugSSDTransform(img_format=cfg_input['FORMAT']))
+        if cfg_input["COLOR_AUG_SSD"]:
+            augs.append(ColorAugSSDTransform(img_format=cfg_input["FORMAT"]))
         augs.append(T.RandomFlip())
 
         # Assume always applies to the training set.
-        dataset_names = cfg['DATASETS']['TRAIN']
-        if dataset_name=='no':
+        dataset_names = cfg["DATASETS"]["TRAIN"]
+        if dataset_name == "no":
             meta = MetadataCatalog.get(dataset_names[0])
         else:
             meta = MetadataCatalog.get(dataset_name)
@@ -94,9 +97,9 @@ class MaskFormerSemanticDatasetMapper:
         ret = {
             "is_train": is_train,
             "augmentations": augs,
-            "image_format": cfg_input['FORMAT'],
+            "image_format": cfg_input["FORMAT"],
             "ignore_label": ignore_label,
-            "size_divisibility": cfg_input['SIZE_DIVISIBILITY'],
+            "size_divisibility": cfg_input["SIZE_DIVISIBILITY"],
             # "dataset_name": dataset_name,
         }
         return ret
@@ -109,7 +112,9 @@ class MaskFormerSemanticDatasetMapper:
         Returns:
             dict: a format that builtin models in detectron2 accept
         """
-        assert self.is_train, "MaskFormerSemanticDatasetMapper should only be used for training!"
+        assert (
+            self.is_train
+        ), "MaskFormerSemanticDatasetMapper should only be used for training!"
 
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         image = utils.read_image(dataset_dict["file_name"], format=self.img_format)
@@ -117,7 +122,9 @@ class MaskFormerSemanticDatasetMapper:
 
         if "sem_seg_file_name" in dataset_dict:
             # PyTorch transformation not implemented for uint16, so converting it to double first
-            sem_seg_gt = utils.read_image(dataset_dict.pop("sem_seg_file_name")).astype("double")
+            sem_seg_gt = utils.read_image(dataset_dict.pop("sem_seg_file_name")).astype(
+                "double"
+            )
         else:
             sem_seg_gt = None
 
@@ -148,7 +155,9 @@ class MaskFormerSemanticDatasetMapper:
             ]
             image = F.pad(image, padding_size, value=128).contiguous()
             if sem_seg_gt is not None:
-                sem_seg_gt = F.pad(sem_seg_gt, padding_size, value=self.ignore_label).contiguous()
+                sem_seg_gt = F.pad(
+                    sem_seg_gt, padding_size, value=self.ignore_label
+                ).contiguous()
 
         image_shape = (image.shape[-2], image.shape[-1])  # h, w
 
@@ -161,7 +170,9 @@ class MaskFormerSemanticDatasetMapper:
             dataset_dict["sem_seg"] = sem_seg_gt.long()
 
         if "annotations" in dataset_dict:
-            raise ValueError("Semantic segmentation dataset should not have 'annotations'.")
+            raise ValueError(
+                "Semantic segmentation dataset should not have 'annotations'."
+            )
 
         # Prepare per-category binary masks
         if sem_seg_gt is not None:
@@ -178,10 +189,17 @@ class MaskFormerSemanticDatasetMapper:
 
             if len(masks) == 0:
                 # Some image does not have annotation (all ignored)
-                instances.gt_masks = torch.zeros((0, sem_seg_gt.shape[-2], sem_seg_gt.shape[-1]))
+                instances.gt_masks = torch.zeros(
+                    (0, sem_seg_gt.shape[-2], sem_seg_gt.shape[-1])
+                )
             else:
                 masks = BitMasks(
-                    torch.stack([torch.from_numpy(np.ascontiguousarray(x.copy())) for x in masks])
+                    torch.stack(
+                        [
+                            torch.from_numpy(np.ascontiguousarray(x.copy()))
+                            for x in masks
+                        ]
+                    )
                 )
                 instances.gt_masks = masks.tensor
 

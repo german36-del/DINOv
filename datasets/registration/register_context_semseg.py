@@ -9,20 +9,28 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.structures import BoxMode
 from detectron2.utils.file_io import PathManager
 
-from utils.constants import PASCAL_CONTEXT_459, PASCAL_CONTEXT_59, PASCAL_CONTEXT_33
+from DINOv.utils.constants import (
+    PASCAL_CONTEXT_459,
+    PASCAL_CONTEXT_59,
+    PASCAL_CONTEXT_33,
+)
 
 __all__ = ["load_context_instances", "register_pascal_context"]
-dataset2class = {"context_459_val_seg": PASCAL_CONTEXT_459,
-                 "context_59_val_seg": PASCAL_CONTEXT_59}
-dataset2labelfolder = {"context_459_val_seg": "trainval",
-                       "context_59_val_seg": "59_context_labels"}
-dataset2postfix = {"context_459_val_seg": ".mat",
-                   "context_59_val_seg": ".png"}
-dataset2segloader = {"context_459_val_seg": "MAT",
-                     "context_59_val_seg": "PIL"}
+dataset2class = {
+    "context_459_val_seg": PASCAL_CONTEXT_459,
+    "context_59_val_seg": PASCAL_CONTEXT_59,
+}
+dataset2labelfolder = {
+    "context_459_val_seg": "trainval",
+    "context_59_val_seg": "59_context_labels",
+}
+dataset2postfix = {"context_459_val_seg": ".mat", "context_59_val_seg": ".png"}
+dataset2segloader = {"context_459_val_seg": "MAT", "context_59_val_seg": "PIL"}
 
 
-def load_context_instances(name: str, dirname: str, split: str, class_names: Union[List[str], Tuple[str, ...]]):
+def load_context_instances(
+    name: str, dirname: str, split: str, class_names: Union[List[str], Tuple[str, ...]]
+):
     """
     Load Pascal VOC detection annotations to Detectron2 format.
 
@@ -31,12 +39,16 @@ def load_context_instances(name: str, dirname: str, split: str, class_names: Uni
         split (str): one of "train", "test", "val", "trainval"
         class_names: list or tuple of class names
     """
-    with PathManager.open(os.path.join(dirname, "VOC2010", "ImageSets", "Main", split + ".txt")) as f:
+    with PathManager.open(
+        os.path.join(dirname, "VOC2010", "ImageSets", "Main", split + ".txt")
+    ) as f:
         fileids = np.loadtxt(f, dtype=np.str)
 
     # Needs to read many small annotation files. Makes sense at local
     image_dirname = PathManager.get_local_path(os.path.join(dirname, "VOC2010"))
-    semseg_dirname = PathManager.get_local_path(os.path.join(dirname, dataset2labelfolder[name]))
+    semseg_dirname = PathManager.get_local_path(
+        os.path.join(dirname, dataset2labelfolder[name])
+    )
 
     dicts = []
     for fileid in fileids:
@@ -53,7 +65,9 @@ def load_context_instances(name: str, dirname: str, split: str, class_names: Uni
 
 
 def register_pascal_context(name, dirname, split, year, class_names=dataset2class):
-    DatasetCatalog.register(name, lambda: load_context_instances(name, dirname, split, class_names))
+    DatasetCatalog.register(
+        name, lambda: load_context_instances(name, dirname, split, class_names)
+    )
     MetadataCatalog.get(name).set(
         stuff_classes=class_names[name],
         dirname=dirname,
@@ -63,7 +77,7 @@ def register_pascal_context(name, dirname, split, year, class_names=dataset2clas
         thing_dataset_id_to_contiguous_id={},
         class_offset=1,
         semseg_loader=dataset2segloader[name],
-        keep_sem_bgd=False
+        keep_sem_bgd=False,
     )
 
 
@@ -79,5 +93,5 @@ def register_all_context_seg(root):
 
 
 _root = os.getenv("DATSETW", "datasets")
-if _root!='datasets':
+if _root != "datasets":
     register_all_context_seg(_root)

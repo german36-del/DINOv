@@ -1,6 +1,7 @@
 from detectron2.data.datasets import get_lvis_instances_meta
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from utils.lvis_cat import LVIS_CATEGORIES as LVIS_V1_CATEGORIES
+from DINOv.utils.lvis_cat import LVIS_CATEGORIES as LVIS_V1_CATEGORIES
+
 # from utils.constants import LVIS_CATEGORIES as LVIS_V1_CATEGORIES
 import logging
 import os
@@ -9,13 +10,16 @@ from fvcore.common.timer import Timer
 import json
 
 
-
 _PREDEFINED_SPLITS_LVIS = {
     "lvis_v1": {
-        "lvis_v1_minival": ("coco/", "coco/annotations/lvis_v1_minival_inserted_image_name.json"),
+        "lvis_v1_minival": (
+            "coco/",
+            "coco/annotations/lvis_v1_minival_inserted_image_name.json",
+        ),
         "lvis_train": ("coco/", "lvis/lvis_v1_train.json"),
     },
 }
+
 
 def get_lvis_instances_meta_v1():
     assert len(LVIS_V1_CATEGORIES) == 1203
@@ -27,16 +31,18 @@ def get_lvis_instances_meta_v1():
     thing_ids = [k["id"] for k in LVIS_V1_CATEGORIES]
     # lvis_categories = sorted(LVIS_V1_CATEGORIES, key=lambda x: x["id"])
     thing_dataset_id_to_contiguous_id = {k: i for i, k in enumerate(thing_ids)}
+
     # thing_classes = [k["name"] for k in O365_CATEGORIES]
     def preprocess_name(name):
         name = name.lower().strip()
-        name = name.replace('_', ' ')
+        name = name.replace("_", " ")
         return name
+
     thing_classes = [preprocess_name(k["synonyms"][0]) for k in LVIS_V1_CATEGORIES]
     meta = {
         "thing_dataset_id_to_contiguous_id": thing_dataset_id_to_contiguous_id,
         "thing_classes": thing_classes,
-            }
+    }
     return meta
 
 
@@ -73,7 +79,7 @@ def load_lvis_json(image_root, annot_json, metadata):
     imageid2box = {}
     imageid2lable = {}
     for anno in json_info["annotations"]:
-        image_id = anno['image_id']
+        image_id = anno["image_id"]
         seg = anno["segmentation"]
         bbox = anno["bbox"]
         label = anno["category_id"]
@@ -90,8 +96,10 @@ def load_lvis_json(image_root, annot_json, metadata):
     ret = []
     cnt_empty = 0
     for image in json_info["images"]:
-        image_file = os.path.join(image_root ,'/'.join(image["coco_url"].split('/')[-2:]))
-        image_id = image['id']
+        image_file = os.path.join(
+            image_root, "/".join(image["coco_url"].split("/")[-2:])
+        )
+        image_id = image["id"]
         if image_id not in imageid2lable:
             cnt_empty += 1
             continue
@@ -99,8 +107,8 @@ def load_lvis_json(image_root, annot_json, metadata):
             {
                 "file_name": image_file,
                 "image_id": image_id,
-                "height": image['height'],
-                "width": image['width'],
+                "height": image["height"],
+                "width": image["width"],
                 "instance": imageid2seg[image_id],
                 "box": imageid2box[image_id],
                 "labels": imageid2lable[image_id],
@@ -116,7 +124,7 @@ def load_lvis_json(image_root, annot_json, metadata):
 def register_all_lvis(_root_eval, _root_train):
     for dataset_name, splits_per_dataset in _PREDEFINED_SPLITS_LVIS.items():
         for key, (image_root, json_file) in splits_per_dataset.items():
-            if 'val' in key:
+            if "val" in key:
                 root = _root_eval
             else:
                 root = _root_train
@@ -130,5 +138,5 @@ def register_all_lvis(_root_eval, _root_train):
 
 _root_eval = os.getenv("DATASET3", "datasets")
 _root_train = os.getenv("DATASET", "datasets")
-if _root_train!='datasets' and _root_eval!='datasets':
+if _root_train != "datasets" and _root_eval != "datasets":
     register_all_lvis(_root_eval, _root_train)

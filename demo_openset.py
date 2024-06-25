@@ -14,17 +14,30 @@ import gradio as gr
 import torch
 import argparse
 
-from dinov.BaseModel import BaseModel
-from dinov import build_model
-from utils.arguments import load_opt_from_config_file
+from DINOv.dinov.BaseModel import BaseModel
+from DINOv.dinov import build_model
+from DINOv.utils.arguments import load_opt_from_config_file
 
-from demo import task_openset
+from DINOv.demo import task_openset
+
 
 def parse_option():
-    parser = argparse.ArgumentParser('DINOv Demo', add_help=False)
-    parser.add_argument('--conf_files', default="configs/dinov_sam_coco_swinl_train.yaml", metavar="FILE", help='path to config file', )
-    parser.add_argument('--ckpt', default="", metavar="FILE", help='path to ckpt', required=True)
-    parser.add_argument('--port', default=6099, type=int, help='path to ckpt', )
+    parser = argparse.ArgumentParser("DINOv Demo", add_help=False)
+    parser.add_argument(
+        "--conf_files",
+        default="configs/dinov_sam_coco_swinl_train.yaml",
+        metavar="FILE",
+        help="path to config file",
+    )
+    parser.add_argument(
+        "--ckpt", default="", metavar="FILE", help="path to ckpt", required=True
+    )
+    parser.add_argument(
+        "--port",
+        default=6099,
+        type=int,
+        help="path to ckpt",
+    )
     args = parser.parse_args()
 
     return args
@@ -44,60 +57,111 @@ class ImageMask(gr.components.Image):
         return super().preprocess(x)
 
 
-'''
+"""
 build args
-'''
+"""
 args = parse_option()
 
-'''
+"""
 build model
-'''
+"""
 
-sam_cfg=args.conf_files
+sam_cfg = args.conf_files
 
 opt = load_opt_from_config_file(sam_cfg)
 
 model_sam = BaseModel(opt, build_model(opt)).from_pretrained(args.ckpt).eval().cuda()
 
+
 @torch.no_grad()
-def inference(generic_vp1, generic_vp2, generic_vp3, generic_vp4,
-                   generic_vp5, generic_vp6, generic_vp7, generic_vp8, image2,*args, **kwargs):
-    with torch.autocast(device_type='cuda', dtype=torch.float16):
-        model=model_sam
-        a= task_openset(model, generic_vp1, generic_vp2, generic_vp3, generic_vp4,
-                   generic_vp5, generic_vp6, generic_vp7, generic_vp8, image2, *args, **kwargs)
+def inference(
+    generic_vp1,
+    generic_vp2,
+    generic_vp3,
+    generic_vp4,
+    generic_vp5,
+    generic_vp6,
+    generic_vp7,
+    generic_vp8,
+    image2,
+    *args,
+    **kwargs
+):
+    with torch.autocast(device_type="cuda", dtype=torch.float16):
+        model = model_sam
+        a = task_openset(
+            model,
+            generic_vp1,
+            generic_vp2,
+            generic_vp3,
+            generic_vp4,
+            generic_vp5,
+            generic_vp6,
+            generic_vp7,
+            generic_vp8,
+            image2,
+            *args,
+            **kwargs
+        )
         return a
 
 
-'''
+"""
 launch app
-'''
+"""
 title = "DINOv: Visual In-Context Prompting"
 
 article = "The Demo is Run on DINOv."
 
 demo = gr.Blocks()
-image_tgt=gr.components.Image(label="Target Image ",type="pil",brush_radius=15.0)
-gallery_output=gr.components.Image(label="Results Image ",type="pil",brush_radius=15.0)
+image_tgt = gr.components.Image(label="Target Image ", type="pil", brush_radius=15.0)
+gallery_output = gr.components.Image(
+    label="Results Image ", type="pil", brush_radius=15.0
+)
 
-generic_vp1 = ImageMask(label="scribble on refer Image 1",type="pil",brush_radius=15.0)
-generic_vp2 = ImageMask(label="scribble on refer Image 2",type="pil",brush_radius=15.0)
-generic_vp3 = ImageMask(label="scribble on refer Image 3",type="pil",brush_radius=15.0)
-generic_vp4 = ImageMask(label="scribble on refer Image 5",type="pil",brush_radius=15.0)
-generic_vp5 = ImageMask(label="scribble on refer Image 6",type="pil",brush_radius=15.0)
-generic_vp6 = ImageMask(label="scribble on refer Image 7",type="pil",brush_radius=15.0)
-generic_vp7 = ImageMask(label="scribble on refer Image 8",type="pil",brush_radius=15.0)
-generic_vp8 = ImageMask(label="scribble on refer Image 9",type="pil",brush_radius=15.0)
-generic = gr.TabbedInterface([
-                        generic_vp1, generic_vp2, generic_vp3, generic_vp4,
-                        generic_vp5, generic_vp6, generic_vp7, generic_vp8
-                    ], ["1", "2", "3", "4", "5", "6", "7", "8"])
+generic_vp1 = ImageMask(
+    label="scribble on refer Image 1", type="pil", brush_radius=15.0
+)
+generic_vp2 = ImageMask(
+    label="scribble on refer Image 2", type="pil", brush_radius=15.0
+)
+generic_vp3 = ImageMask(
+    label="scribble on refer Image 3", type="pil", brush_radius=15.0
+)
+generic_vp4 = ImageMask(
+    label="scribble on refer Image 5", type="pil", brush_radius=15.0
+)
+generic_vp5 = ImageMask(
+    label="scribble on refer Image 6", type="pil", brush_radius=15.0
+)
+generic_vp6 = ImageMask(
+    label="scribble on refer Image 7", type="pil", brush_radius=15.0
+)
+generic_vp7 = ImageMask(
+    label="scribble on refer Image 8", type="pil", brush_radius=15.0
+)
+generic_vp8 = ImageMask(
+    label="scribble on refer Image 9", type="pil", brush_radius=15.0
+)
+generic = gr.TabbedInterface(
+    [
+        generic_vp1,
+        generic_vp2,
+        generic_vp3,
+        generic_vp4,
+        generic_vp5,
+        generic_vp6,
+        generic_vp7,
+        generic_vp8,
+    ],
+    ["1", "2", "3", "4", "5", "6", "7", "8"],
+)
 
-title='''
+title = """
 # DINOv: Visual In-Context Prompting
 
 # [[Read our arXiv Paper](https://arxiv.org/pdf/2311.13601.pdf)\] &nbsp; \[[Github page](https://github.com/UX-Decoder/DINOv)\] 
-'''
+"""
 
 with demo:
     with gr.Row():
@@ -106,8 +170,7 @@ with demo:
             image_tgt.render()
             generic.render()
             with gr.Row(scale=2.0):
-                clearBtn = gr.ClearButton(
-                    components=[image_tgt])
+                clearBtn = gr.ClearButton(components=[image_tgt])
                 runBtn = gr.Button("Run")
         with gr.Column(scale=5.0):
 
@@ -126,15 +189,25 @@ with demo:
                 cache_examples=False,
             )
 
-    title = title,
-    article = article,
-    allow_flagging = 'never',
+    title = (title,)
+    article = (article,)
+    allow_flagging = ("never",)
 
-    runBtn.click(inference, inputs=[generic_vp1, generic_vp2, generic_vp3, generic_vp4,
-                   generic_vp5, generic_vp6, generic_vp7, generic_vp8, image_tgt],
-              outputs = [gallery_output])
+    runBtn.click(
+        inference,
+        inputs=[
+            generic_vp1,
+            generic_vp2,
+            generic_vp3,
+            generic_vp4,
+            generic_vp5,
+            generic_vp6,
+            generic_vp7,
+            generic_vp8,
+            image_tgt,
+        ],
+        outputs=[gallery_output],
+    )
 
 
-
-demo.queue().launch(share=True,server_port=args.port)
-
+demo.queue().launch(share=True, server_port=args.port)

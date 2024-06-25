@@ -12,9 +12,10 @@ from detectron2.data import transforms as T
 from detectron2.projects.point_rend import ColorAugSSDTransform
 from detectron2.structures import BitMasks, Instances, polygons_to_bitmask
 
-from dinov.utils import configurable
+from DINOv.dinov.utils import configurable
 
 __all__ = ["MaskFormerInstanceDatasetMapper"]
+
 
 def filter_empty_instances_by_box(
     instances, by_box=True, by_mask=False, box_threshold=1e-5, return_mask=False
@@ -25,7 +26,7 @@ def filter_empty_instances_by_box(
         r.append(instances.gt_boxes.nonempty(threshold=box_threshold))
     if instances.has("gt_masks") and by_mask:
         r.append(instances.gt_masks.nonempty())
-        
+
     # TODO: can also filter visible keypoints
 
     if not r:
@@ -75,37 +76,39 @@ class MaskFormerInstanceDatasetMapper:
 
         logger = logging.getLogger(__name__)
         mode = "training" if is_train else "inference"
-        logger.info(f"[{self.__class__.__name__}] Augmentations used in {mode}: {augmentations}")
+        logger.info(
+            f"[{self.__class__.__name__}] Augmentations used in {mode}: {augmentations}"
+        )
 
     @classmethod
     def from_config(cls, cfg, is_train=True):
         # Build augmentation
-        cfg_input = cfg['INPUT']
+        cfg_input = cfg["INPUT"]
         augs = [
             T.ResizeShortestEdge(
-                cfg_input['MIN_SIZE_TRAIN'],
-                cfg_input['MAX_SIZE_TRAIN'],
-                cfg_input['MIN_SIZE_TRAIN_SAMPLING'],
+                cfg_input["MIN_SIZE_TRAIN"],
+                cfg_input["MAX_SIZE_TRAIN"],
+                cfg_input["MIN_SIZE_TRAIN_SAMPLING"],
             )
         ]
 
-        cfg_input_crop = cfg_input['CROP']
-        if cfg_input_crop['ENABLED']:
+        cfg_input_crop = cfg_input["CROP"]
+        if cfg_input_crop["ENABLED"]:
             augs.append(
                 T.RandomCrop(
-                    cfg_input_crop['TYPE'],
-                    cfg_input_crop['SIZE'],
+                    cfg_input_crop["TYPE"],
+                    cfg_input_crop["SIZE"],
                 )
             )
-        if cfg_input['COLOR_AUG_SSD']:
-            augs.append(ColorAugSSDTransform(img_format=cfg_input['FORMAT']))
+        if cfg_input["COLOR_AUG_SSD"]:
+            augs.append(ColorAugSSDTransform(img_format=cfg_input["FORMAT"]))
         augs.append(T.RandomFlip())
 
         ret = {
             "is_train": is_train,
             "augmentations": augs,
-            "image_format": cfg_input['FORMAT'],
-            "size_divisibility": cfg_input['SIZE_DIVISIBILITY'],
+            "image_format": cfg_input["FORMAT"],
+            "size_divisibility": cfg_input["SIZE_DIVISIBILITY"],
         }
         return ret
 
@@ -117,7 +120,9 @@ class MaskFormerInstanceDatasetMapper:
         Returns:
             dict: a format that builtin models in detectron2 accept
         """
-        assert self.is_train, "MaskFormerPanopticDatasetMapper should only be used for training!"
+        assert (
+            self.is_train
+        ), "MaskFormerPanopticDatasetMapper should only be used for training!"
 
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         image = utils.read_image(dataset_dict["file_name"], format=self.img_format)
@@ -150,9 +155,9 @@ class MaskFormerInstanceDatasetMapper:
                 # COCO RLE
                 masks.append(mask_util.decode(segm))
             elif isinstance(segm, np.ndarray):
-                assert segm.ndim == 2, "Expect segmentation of 2 dimensions, got {}.".format(
-                    segm.ndim
-                )
+                assert (
+                    segm.ndim == 2
+                ), "Expect segmentation of 2 dimensions, got {}.".format(segm.ndim)
                 # mask array
                 masks.append(segm)
             else:
@@ -193,7 +198,7 @@ class MaskFormerInstanceDatasetMapper:
         # Prepare per-category binary masks
         instances = Instances(image_shape)
         instances.gt_classes = classes
-        
+
         if len(masks) == 0:
             # Some image does not have annotation (all ignored)
             instances.gt_masks = torch.zeros((0, image.shape[-2], image.shape[-1]))
@@ -202,7 +207,7 @@ class MaskFormerInstanceDatasetMapper:
             masks = BitMasks(torch.stack(masks))
             instances.gt_boxes = masks.get_bounding_boxes()
             instances.gt_masks = masks.tensor
-        
+
         dataset_dict["instances"] = filter_empty_instances_by_box(instances)
         # dataset_dict["instances"] = instances
 

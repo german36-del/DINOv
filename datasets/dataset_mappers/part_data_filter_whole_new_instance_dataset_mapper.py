@@ -22,13 +22,13 @@ from detectron2.structures import (
 )
 from pycocotools import mask as coco_mask
 
-from dinov.utils import configurable
+from DINOv.dinov.utils import configurable
 
 __all__ = ["PartFilterWholeInstanceNewBaselineDatasetMapper"]
 
 
 def filter_empty_instances_by_box(
-        instances, by_box=True, by_mask=False, box_threshold=1e-5, return_mask=False
+    instances, by_box=True, by_mask=False, box_threshold=1e-5, return_mask=False
 ):
     assert by_box or by_mask
     r = []
@@ -47,6 +47,7 @@ def filter_empty_instances_by_box(
     if return_mask:
         return instances[m], m
     return instances[m]
+
 
 def filter_no_part_instances(instances):
     """
@@ -79,30 +80,35 @@ def build_transform_gen(cfg, is_train):
         list[Augmentation]
     """
     # assert is_train, "Only support training augmentation"
-    cfg_input = cfg['INPUT']
-    image_size = cfg_input['IMAGE_SIZE']
-    min_scale = cfg_input['MIN_SCALE']
-    max_scale = cfg_input['MAX_SCALE']
+    cfg_input = cfg["INPUT"]
+    image_size = cfg_input["IMAGE_SIZE"]
+    min_scale = cfg_input["MIN_SCALE"]
+    max_scale = cfg_input["MAX_SCALE"]
 
     augmentation = []
     if not is_train:
-        cfg_input['RANDOM_FLIP'] = "none"
+        cfg_input["RANDOM_FLIP"] = "none"
         min_scale = 1.0
         max_scale = 1.2
-    if cfg_input['RANDOM_FLIP'] != "none":
+    if cfg_input["RANDOM_FLIP"] != "none":
         augmentation.append(
             T.RandomFlip(
-                horizontal=cfg_input['RANDOM_FLIP'] == "horizontal",
-                vertical=cfg_input['RANDOM_FLIP'] == "vertical",
+                horizontal=cfg_input["RANDOM_FLIP"] == "horizontal",
+                vertical=cfg_input["RANDOM_FLIP"] == "vertical",
             )
         )
 
-    augmentation.extend([
-        T.ResizeScale(
-            min_scale=min_scale, max_scale=max_scale, target_height=image_size, target_width=image_size
-        ),
-        T.FixedSizeCrop(crop_size=(image_size, image_size)),
-    ])
+    augmentation.extend(
+        [
+            T.ResizeScale(
+                min_scale=min_scale,
+                max_scale=max_scale,
+                target_height=image_size,
+                target_width=image_size,
+            ),
+            T.FixedSizeCrop(crop_size=(image_size, image_size)),
+        ]
+    )
 
     return augmentation
 
@@ -125,12 +131,12 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
 
     @configurable
     def __init__(
-            self,
-            is_train=True,
-            *,
-            tfm_gens,
-            image_format,
-            dataset_name,
+        self,
+        is_train=True,
+        *,
+        tfm_gens,
+        image_format,
+        dataset_name,
     ):
         """
         NOTE: this interface is experimental.
@@ -142,7 +148,9 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
         """
         self.tfm_gens = tfm_gens
         logging.getLogger(__name__).info(
-            "[COCOInstanceNewBaselineDatasetMapper] Full TransformGens used in training: {}".format(str(self.tfm_gens))
+            "[COCOInstanceNewBaselineDatasetMapper] Full TransformGens used in training: {}".format(
+                str(self.tfm_gens)
+            )
         )
 
         self.img_format = image_format
@@ -157,7 +165,7 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
         ret = {
             "is_train": is_train,
             "tfm_gens": tfm_gens,
-            "image_format": cfg['INPUT']['FORMAT'],
+            "image_format": cfg["INPUT"]["FORMAT"],
             "dataset_name": dataset_name,
         }
         return ret
@@ -181,15 +189,19 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
         image, transforms = T.apply_transform_gens(self.tfm_gens, image)
         # the crop transformation has default padding value 0 for segmentation
         padding_mask = transforms.apply_segmentation(padding_mask)
-        padding_mask = ~ padding_mask.astype(bool)
+        padding_mask = ~padding_mask.astype(bool)
 
         image_shape = image.shape[:2]  # h, w
 
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
-        dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-        dataset_dict["padding_mask"] = torch.as_tensor(np.ascontiguousarray(padding_mask))
+        dataset_dict["image"] = torch.as_tensor(
+            np.ascontiguousarray(image.transpose(2, 0, 1))
+        )
+        dataset_dict["padding_mask"] = torch.as_tensor(
+            np.ascontiguousarray(padding_mask)
+        )
 
         # if not self.is_train:
         #     # USER: Modify this if you want to keep them for some reason.
@@ -223,9 +235,9 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
                     # COCO RLE
                     masks.append(mask_util.decode(segm))
                 elif isinstance(segm, np.ndarray):  # go this way
-                    assert segm.ndim == 2, "Expect segmentation of 2 dimensions, got {}.".format(
-                        segm.ndim
-                    )
+                    assert (
+                        segm.ndim == 2
+                    ), "Expect segmentation of 2 dimensions, got {}.".format(segm.ndim)
                     # mask array
                     masks.append(segm)
                 else:
@@ -254,16 +266,22 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
             # Prepare per-category binary masks
             instances = Instances(image_shape)
             classes = torch.tensor(classes, dtype=torch.int64)
-            masks = torch.stack(masks) if len(masks)>0 else masks
-            if 'paco' in self.dataset_name and len(masks)>0:
+            masks = torch.stack(masks) if len(masks) > 0 else masks
+            if "paco" in self.dataset_name and len(masks) > 0:
                 thing_classes_id_without_part = metadata.thing_classes_id_without_part
-                filter_no_part_mask = [c not in thing_classes_id_without_part for c in classes]
+                filter_no_part_mask = [
+                    c not in thing_classes_id_without_part for c in classes
+                ]
 
                 classes = classes[filter_no_part_mask]
                 masks = masks[filter_no_part_mask]
 
-            whole_classes = [metadata.thing_clases_id_to_whole_id[int(c)] for c in classes]
-            part_classes = [metadata.thing_clases_id_to_part_id[int(c)] for c in classes]
+            whole_classes = [
+                metadata.thing_clases_id_to_whole_id[int(c)] for c in classes
+            ]
+            part_classes = [
+                metadata.thing_clases_id_to_part_id[int(c)] for c in classes
+            ]
             instances.gt_whole_classes = torch.tensor(whole_classes, dtype=torch.int64)
             instances.gt_part_classes = torch.tensor(part_classes, dtype=torch.int64)
 
@@ -281,6 +299,5 @@ class PartFilterWholeInstanceNewBaselineDatasetMapper:
                 instances.gt_masks = masks.tensor
 
             dataset_dict["instances"] = filter_empty_instances_by_box(instances)
-
 
         return dataset_dict
